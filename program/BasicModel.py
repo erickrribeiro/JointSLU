@@ -4,15 +4,18 @@ by V. Chen, D. Hakkani-Tur & G. Tur
 """
 
 import os, sys, json
-import numpy as np 
+import numpy as np
 from scipy import io
 from wordSlotDataSet import dataSet, readNum
 from PredefinedEmbedding import PredefinedEmbedding
 from Encoding import encoding
 import argparse
 from keras.preprocessing import sequence
-from keras.models import Sequential, Graph, Model
-from keras.layers import Input, merge, Merge, Dense, TimeDistributedDense, Dropout, Activation, RepeatVector, Permute, Reshape, RepeatVector, Flatten
+# from keras.models import Sequential, Graph, Model
+from keras.models import Sequential, Model
+
+# from keras.layers import Input, merge, Merge, Dense, TimeDistributedDense, Dropout, Activation, RepeatVector, Permute, Reshape, RepeatVector, Flatten
+from keras.layers import Input, merge, Dense, Dropout, Activation, RepeatVector, Permute, Reshape, RepeatVector, Flatten
 from keras.layers.convolutional import Convolution1D, MaxPooling1D, AveragePooling1D
 from keras.layers.embeddings import Embedding
 from keras.layers.recurrent import SimpleRNN, GRU, LSTM
@@ -25,9 +28,9 @@ from History import LossHistory
 
 class KerasModel( object ):
 
-	def __init__(self,argparams):
+	def __init__(self, argparams):
 		# PARAMETERS
-		self.hidden_size = argparams['hidden_size'] # size of hidden layer of neurons 
+		self.hidden_size = argparams['hidden_size'] # size of hidden layer of neurons
 		self.learning_rate = argparams['learning_rate']
 		self.training_file = argparams['train_data_path']
 		self.validation_file = argparams['dev_data_path']
@@ -97,7 +100,7 @@ class KerasModel( object ):
 			x2 = self.model.inputs[1]
 			#x = self.model.layers[1].input
 			y = self.model.get_layer(name='match').output
-#			y = self.model.layers[9].output
+			#			y = self.model.layers[9].output
 			f = K.function([x1, x2, K.learning_phase()], y)
 			att_mtx = f([batch_data[0], batch_data[1], 0])
 			row, col = np.shape(att_mtx)
@@ -184,10 +187,10 @@ class KerasModel( object ):
 				tagger = forward
 			if self.dropout:
 				tagger = Dropout(self.dropout_ratio)(tagger)
-                        prediction = TimeDistributed(Dense(self.output_vocab_size, activation='softmax'))(tagger)
+			prediction = TimeDistributed(Dense(self.output_vocab_size, activation='softmax'))(tagger)
 
-                        self.model = Model(input=raw_current, output=prediction)
-                        self.model.compile(loss='categorical_crossentropy', optimizer=opt_func)
+			self.model = Model(input=raw_current, output=prediction)
+			self.model.compile(loss='categorical_crossentropy', optimizer=opt_func)
 
 		# 2-Stacked Layered RNN (LSTM, SimpleRNN, GRU)
 		elif self.arch == '2lstm' or self.arch == '2rnn' or self.arch == '2gru':
@@ -201,7 +204,7 @@ class KerasModel( object ):
 				basic_model = SimpleRNN(self.hidden_size, return_sequences=True, input_shape=(self.time_length, self.embedding_size), init=self.init_type, activation=self.activation)
 				stack_model = SimpleRNN(self.hidden_size, return_sequences=True, input_shape=(self.time_length, self.hidden_size), init=self.init_type, activation=self.activation)
 			else:
-				basic_model = GRU(self.hidden_size, return_sequences=True, input_shape=(self.time_length, self.embedding_size), init=self.init_type, activation=self.activation)	
+				basic_model = GRU(self.hidden_size, return_sequences=True, input_shape=(self.time_length, self.embedding_size), init=self.init_type, activation=self.activation)
 				stack_model = GRU(self.hidden_size, return_sequences=True, input_shape=(self.time_length, self.hidden_size), init=self.init_type, activation=self.activation)
 			self.model.add(basic_model)
 			if self.dropout:
@@ -242,14 +245,14 @@ class KerasModel( object ):
 				encoder = fencoder
 				labeling = flabeling
 			#intent = Dense(self.output_vocab_size, activation='softmax')(encoder)
-                        encoder = RepeatVector(self.time_length)(encoder)
-                        tagger = merge([encoder, labeling], mode='concat', concat_axis=-1)
+			encoder = RepeatVector(self.time_length)(encoder)
+			tagger = merge([encoder, labeling], mode='concat', concat_axis=-1)
 			if self.dropout:
 				tagger = Dropout(self.dropout_ratio)(tagger)
-                        prediction = TimeDistributed(Dense(self.output_vocab_size, activation='softmax'))(tagger)
+			prediction = TimeDistributed(Dense(self.output_vocab_size, activation='softmax'))(tagger)
 
-                        self.model = Model(input=raw_current, output=prediction)
-                        self.model.compile(loss='categorical_crossentropy', optimizer=opt_func)
+			self.model = Model(input=raw_current, output=prediction)
+			self.model.compile(loss='categorical_crossentropy', optimizer=opt_func)
 
 		# Encode intent information by feeding all words and then start tagging
 		elif self.arch == 'i-c-rnn' or self.arch == 'i-c-gru' or self.arch == 'i-c-lstm' or self.arch == 'i-c-brnn' or self.arch == 'i-c-bgru' or self.arch == 'i-c-blstm':
@@ -275,14 +278,14 @@ class KerasModel( object ):
 			else:
 				labeling = forward
 			#intent = Dense(self.output_vocab_size, activation='softmax')(encoder)
-                        encoder = RepeatVector(self.time_length)(encoder)
-                        tagger = merge([encoder, labeling], mode='concat', concat_axis=-1)
+			encoder = RepeatVector(self.time_length)(encoder)
+			tagger = merge([encoder, labeling], mode='concat', concat_axis=-1)
 			if self.dropout:
 				tagger = Dropout(self.dropout_ratio)(tagger)
-                        prediction = TimeDistributed(Dense(self.output_vocab_size, activation='softmax'))(tagger)
+			prediction = TimeDistributed(Dense(self.output_vocab_size, activation='softmax'))(tagger)
 
-                        self.model = Model(input=raw_current, output=prediction)
-                        self.model.compile(loss='categorical_crossentropy', optimizer=opt_func)
+			self.model = Model(input=raw_current, output=prediction)
+			self.model.compile(loss='categorical_crossentropy', optimizer=opt_func)
 
 
 		# Encode all history and the current utterance first and then start tagging
@@ -317,14 +320,14 @@ class KerasModel( object ):
 				encoder = fencoder
 				labeling = flabeling
 			#intent = Dense(self.output_vocab_size, activation='softmax')(encoder)
-                        encoder = RepeatVector(self.time_length)(encoder)
-                        tagger = merge([encoder, labeling], mode='concat', concat_axis=-1)
+			encoder = RepeatVector(self.time_length)(encoder)
+			tagger = merge([encoder, labeling], mode='concat', concat_axis=-1)
 			if self.dropout:
 				tagger = Dropout(self.dropout_ratio)(tagger)
-                        prediction = TimeDistributed(Dense(self.output_vocab_size, activation='softmax'))(tagger)
+			prediction = TimeDistributed(Dense(self.output_vocab_size, activation='softmax'))(tagger)
 
-                        self.model = Model(input=[raw_his, raw_cur], output=prediction)
-                        self.model.compile(loss='categorical_crossentropy', optimizer=opt_func)
+			self.model = Model(input=[raw_his, raw_cur], output=prediction)
+			self.model.compile(loss='categorical_crossentropy', optimizer=opt_func)
 
 		# Encode all history and the current utterance first and then start tagging
 		elif self.arch == 'hi-c-rnn' or self.arch == 'hi-c-gru' or self.arch == 'hi-c-lstm' or self.arch == 'hi-c-brnn' or self.arch == 'hi-c-bgru' or self.arch == 'hi-c-blstm':
@@ -353,14 +356,14 @@ class KerasModel( object ):
 			encoder = MaxPooling1D(self.time_length)(encoder)
 			encoder = Flatten()(encoder)
 			#intent = Dense(self.output_vocab_size, activation='softmax')(encoder)
-                        encoder = RepeatVector(self.time_length)(encoder)
-                        tagger = merge([encoder, labeling], mode='concat', concat_axis=-1)
+			encoder = RepeatVector(self.time_length)(encoder)
+			tagger = merge([encoder, labeling], mode='concat', concat_axis=-1)
 			if self.dropout:
 				tagger = Dropout(self.dropout_ratio)(tagger)
-                        prediction = TimeDistributed(Dense(self.output_vocab_size, activation='softmax'))(tagger)
+			prediction = TimeDistributed(Dense(self.output_vocab_size, activation='softmax'))(tagger)
 
-                        self.model = Model(input=[raw_his, raw_cur], output=prediction)
-                        self.model.compile(loss='categorical_crossentropy', optimizer=opt_func)
+			self.model = Model(input=[raw_his, raw_cur], output=prediction)
+			self.model.compile(loss='categorical_crossentropy', optimizer=opt_func)
 
 		elif 'amemn2n' in self.arch:
 			# current: (, time_length, embedding_size)
@@ -434,7 +437,7 @@ class KerasModel( object ):
 			else:
 				raw_input_memory = Input(shape=(self.his_length * self.time_length, self.embedding_size), name='input_memory')
 				input_memory = Reshape((self.his_length, self.time_length, self.embedding_size))(raw_input_memory)
-                        mem_vec = TimeDistributed(sent_model)(input_memory)
+			mem_vec = TimeDistributed(sent_model)(input_memory)
 
 			# compute the similarity between sentence embeddings for attention
 			match = merge([mem_vec, cur_vec], mode='dot', dot_axes=[2, 1])
@@ -452,18 +455,18 @@ class KerasModel( object ):
 				backward = LSTM(self.hidden_size, return_sequences=False, init=self.init_type, activation=self.activation, go_backwards=True)(current)
 				labeling = merge([forward, backward], mode='concat', concat_axis=-1)
 			elif 'rnn' in self.arch:
-	                        labeling = SimpleRNN(self.hidden_size, return_sequences=False, init=self.init_type, activation=self.activation)(current)
+				labeling = SimpleRNN(self.hidden_size, return_sequences=False, init=self.init_type, activation=self.activation)(current)
 			elif 'gru' in self.arch:
-	                        labeling = GRU(self.hidden_size, return_sequences=False, init=self.init_type, activation=self.activation)(current)
+				labeling = GRU(self.hidden_size, return_sequences=False, init=self.init_type, activation=self.activation)(current)
 			elif 'lstm' in self.arch:
-	                        labeling = LSTM(self.hidden_size, return_sequences=False, init=self.init_type, activation=self.activation)(current)
-                        tagger = merge([encoder, labeling], mode='concat', concat_axis=-1)
+				labeling = LSTM(self.hidden_size, return_sequences=False, init=self.init_type, activation=self.activation)(current)
+			tagger = merge([encoder, labeling], mode='concat', concat_axis=-1)
 			if self.dropout:
 				tagger = Dropout(self.dropout_ratio)(tagger)
-                        prediction = Dense(self.output_vocab_size, activation='softmax')(tagger)
+			prediction = Dense(self.output_vocab_size, activation='softmax')(tagger)
 
-                        self.model = Model(input=[raw_input_memory, raw_current], output=prediction)
-                        self.model.compile(loss='categorical_crossentropy', optimizer=opt_func)
+			self.model = Model(input=[raw_input_memory, raw_current], output=prediction)
+			self.model.compile(loss='categorical_crossentropy', optimizer=opt_func)
 
 		elif 'memn2n' in self.arch:
 			# current: (, time_length, embedding_size)
@@ -537,7 +540,7 @@ class KerasModel( object ):
 			else:
 				raw_input_memory = Input(shape=(self.his_length * self.time_length, self.embedding_size), name='input_memory')
 				input_memory = Reshape((self.his_length, self.time_length, self.embedding_size))(raw_input_memory)
-                        mem_vec = TimeDistributed(sent_model)(input_memory)
+			mem_vec = TimeDistributed(sent_model)(input_memory)
 
 			# compute the similarity between sentence embeddings for attention
 			match = merge([mem_vec, cur_vec], mode='dot', dot_axes=[2, 1])
@@ -548,7 +551,7 @@ class KerasModel( object ):
 			his_vec = merge([mem_vec, match], mode='dot', dot_axes=[1, 1])
 			encoder = merge([his_vec, cur_vec], mode='sum')
 			encoder = Dense(self.embedding_size)(encoder)
-                        encoder = RepeatVector(self.time_length)(encoder)
+			encoder = RepeatVector(self.time_length)(encoder)
 
 			# tagging the words in the current sentence
 			if 'blstm' in self.arch:
@@ -556,23 +559,23 @@ class KerasModel( object ):
 				backward = LSTM(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation, go_backwards=True)(current)
 				labeling = merge([forward, backward], mode='concat', concat_axis=-1)
 			elif 'rnn' in self.arch:
-	                        labeling = SimpleRNN(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation)(current)
+				labeling = SimpleRNN(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation)(current)
 			elif 'gru' in self.arch:
-	                        labeling = GRU(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation)(current)
+				labeling = GRU(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation)(current)
 			elif 'lstm' in self.arch:
-	                        labeling = LSTM(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation)(current)
-                        tagger = merge([encoder, labeling], mode='concat', concat_axis=-1)
+				labeling = LSTM(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation)(current)
+			tagger = merge([encoder, labeling], mode='concat', concat_axis=-1)
 			if self.dropout:
 				tagger = Dropout(self.dropout_ratio)(tagger)
-                        prediction = TimeDistributed(Dense(self.output_vocab_size, activation='softmax'))(tagger)
+			prediction = TimeDistributed(Dense(self.output_vocab_size, activation='softmax'))(tagger)
 
-                        self.model = Model(input=[raw_input_memory, raw_current], output=prediction)
-                        self.model.compile(loss='categorical_crossentropy', optimizer=opt_func)
+			self.model = Model(input=[raw_input_memory, raw_current], output=prediction)
+			self.model.compile(loss='categorical_crossentropy', optimizer=opt_func)
 
 
 	def train(self, H_train, X_train, y_train, H_dev, X_dev, y_dev, val_ratio=0.0):
 		# load saved model weights
-                if self.load_weight is not None:
+		if self.load_weight is not None:
 			sys.stderr.write("Load the pretrained weights for the model.\n")
 			self.model.load_weights(self.load_weight)
 		else:
@@ -631,7 +634,7 @@ class KerasModel( object ):
 		pad_y_train = sequence.pad_sequences(trainData.dataSet['tags'], maxlen=self.time_length, dtype='int32', padding='pre')
 		num_sample_train, max_len = np.shape(pad_X_train)
 		num_sample_test, max_len = np.shape(pad_X_test)
-		
+
 		if not self.nodev:
 			validData = dataSet(self.validation_file, 'val', trainData.getWordVocab(), trainData.getTagVocab(),trainData.getIndex2Word(),trainData.getIndex2Tag())
 			pad_X_dev = sequence.pad_sequences(validData.dataSet['utterances'], maxlen=self.time_length, dtype='int32', padding='pre')

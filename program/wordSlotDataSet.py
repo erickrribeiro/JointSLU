@@ -9,7 +9,7 @@ modified by V. Chen
 import numpy as np
 
 
-class DataSet(object):
+class dataSet(object):
     """
       utterances with slot tags
     """
@@ -101,7 +101,7 @@ def readHisData(dataFile):
         his = d[0].strip()
         utt = d[1].strip()
         t = d[2].strip()
-        print 'his: %s, utt: %s, tags: %s' % (his, utt, t)
+        print 'his: %s, utt: %s, tags: %s'%(his, utt, t)
 
         temp_his = list()
         temp_utt = list()
