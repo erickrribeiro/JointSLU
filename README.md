@@ -14,7 +14,7 @@ where intent prediction and slot filling are performed in a single network model
 * [Reference](#reference)
 
 ## Requirements
-1. Python
+1. Python 2.7
 2. Numpy `pip install numpy`
 3. Keras and associated Theano or TensorFlow `pip install keras`
 4. H5py `pip install h5py`
@@ -28,7 +28,7 @@ where intent prediction and slot filling are performed in a single network model
 You can train and test JointSLU with the following commands:
 
 ```shell
-  git clone --recursive https://github.com/yvchen/JointSLU.git
+  git clone --recursive https://github.com/erickrribeiro/JointSLU.git
   cd JointSLU
 ```
 You can run a sample tutorial with this command:

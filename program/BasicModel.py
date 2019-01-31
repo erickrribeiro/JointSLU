@@ -12,7 +12,7 @@ from keras.models import Sequential, Model
 
 from keras.layers import concatenate
 
-from keras.layers import Input, Dense, Dropout, Activation, RepeatVector, Reshape, RepeatVector, Flatten
+from keras.layers import Input, Dense, Dropout, Activation, Reshape, RepeatVector, Flatten
 from keras.layers.convolutional import Convolution1D, MaxPooling1D, AveragePooling1D
 from keras.layers.embeddings import Embedding
 from keras.layers.recurrent import SimpleRNN, GRU, LSTM
@@ -78,63 +78,6 @@ class KerasModel(object):
             self.model_arch = self.model_arch + '+T'
         if self.e2e_flag:
             self.model_arch = 'e2e-' + self.model_arch
-
-	def test(self, H, X, data_type, tagDict, pad_data):
-		# open a dir to store results
-		if self.default:
-			target_file = self.result_path + '/' + self.model_arch + '_H-'+str(self.hidden_size)+'_O-'+self.update_f+'_A-'+self.activation+'_WR-'+self.input_type
-		else:
-			target_file = self.result_path + '/' + self.model_arch +'-LR-'+str(self.learning_rate)+'_H-'+str(self.hidden_size)+'_O-'+self.update_f+'_A-'+self.activation+'_WR-'+self.input_type
-
-		if 'memn2n' in self.arch or self.arch[0] == 'h':
-			batch_data = [H, X]
-		else:
-			batch_data = X
-
-		# output attention
-		if self.output_att is not None:
-			x1 = self.model.inputs[0]
-			x2 = self.model.inputs[1]
-			#x = self.model.layers[1].input
-			y = self.model.get_layer(name='match').output
-			#			y = self.model.layers[9].output
-			f = K.function([x1, x2, K.learning_phase()], y)
-			att_mtx = f([batch_data[0], batch_data[1], 0])
-			row, col = np.shape(att_mtx)
-			fo = open(self.output_att, 'wb')
-			for i in range(0, row):
-				for j in range(0, col):
-					fo.write("%e " %att_mtx[i][j])
-				fo.write('\n')
-			fo.close()
-			sys.stderr.write("Output the attention weights in the file %s.\n" %self.output_att)
-			exit()
-		if "predict_classes" in dir(self.model):
-			prediction = self.model.predict_classes(batch_data)
-			probability = self.model.predict_proba(batch_data)
-		else:
-			probability = self.model.predict(batch_data)
-			prediction = np.argmax(probability, axis=2)
-
-		# output prediction and probability results
-		fo = open(target_file+"."+ data_type, "wb")
-		for i, sent in enumerate(prediction):
-			for j, tid in enumerate(sent):
-				if pad_data[i][j] != 0:
-					if self.tag_format == 'normal':
-						fo.write(tagDict[tid] + ' ')
-					elif self.tag_format == 'conlleval':
-						fo.write(tagDict[tid] + '\n')
-			fo.write('\n')
-		fo.close()
-		fo = open(target_file+"."+ data_type+'.prob', "wb")
-		for i, sent in enumerate(probability):
-			for j, prob in enumerate(sent):
-				if pad_data[i][j] != 0:
-					for k, val in enumerate(prob):
-						fo.write("%e " %val)
-					fo.write("\n")
-		fo.close()
 
     def build(self):
 
@@ -585,8 +528,8 @@ class KerasModel(object):
             self.model = Model(input=[raw_input_memory, raw_current], output=prediction)
             self.model.compile(loss='categorical_crossentropy', optimizer=opt_func)
 
-
     def train(self, H_train, X_train, y_train, H_dev, X_dev, y_dev, val_ratio=0.0):
+
         # load saved model weights
         if self.load_weight is not None:
             sys.stderr.write("Load the pretrained weights for the model.\n")
@@ -603,7 +546,7 @@ class KerasModel(object):
             if not self.nodev:
                 early_stop = EarlyStopping(monitor='val_loss', patience=10)
                 train_log = LossHistory()
-                self.model.fit(batch_train, y_train, batch_size=self.batch_size, nb_epoch=self.max_epochs, verbose=1, validation_data=(batch_dev, y_dev), callbacks=[early_stop, train_log], shuffle=self.shuffle)
+                self.model.fit(batch_train, y_train, batch_size=self.batch_size, epochs=self.max_epochs, verbose=1, validation_data=(batch_dev, y_dev), callbacks=[early_stop, train_log], shuffle=self.shuffle)
                 if self.log is not None:
                     fo = open(self.log, "wb")
                     for loss in train_log.losses:
@@ -627,7 +570,7 @@ class KerasModel(object):
         # initialization of vocab
         emptyVocab = {}
         emptyIndex = list()
-        trainData = dataSet(self.training_file,'train',emptyVocab,emptyVocab,emptyIndex,emptyIndex)
+        trainData = dataSet(self.training_file,'train', emptyVocab, emptyVocab, emptyIndex, emptyIndex)
         testData = dataSet(self.test_file, 'test', trainData.getWordVocab(), trainData.getTagVocab(),trainData.getIndex2Word(),trainData.getIndex2Tag())
         if self.train_numfile is not None:
             self.trainNum, self.trainTotal = readNum(self.train_numfile)
@@ -720,3 +663,62 @@ class KerasModel(object):
                 whole_path = self.mdl_path + '/' + self.model_arch + '.final-' + str(self.max_epochs) + '.h5'
                 sys.stderr.write("Writing model weight to %s...\n" %whole_path)
                 self.model.save_weights(whole_path, overwrite=True)
+
+    def test(self, H, X, data_type, tagDict, pad_data):
+        # open a dir to store results
+        if self.default:
+            target_file = self.result_path + '/' + self.model_arch + '_H-' + str(
+                self.hidden_size) + '_O-' + self.update_f + '_A-' + self.activation + '_WR-' + self.input_type
+        else:
+            target_file = self.result_path + '/' + self.model_arch + '-LR-' + str(self.learning_rate) + '_H-' + str(
+                self.hidden_size) + '_O-' + self.update_f + '_A-' + self.activation + '_WR-' + self.input_type
+
+        if 'memn2n' in self.arch or self.arch[0] == 'h':
+            batch_data = [H, X]
+        else:
+            batch_data = X
+
+        # output attention
+        if self.output_att is not None:
+            x1 = self.model.inputs[0]
+            x2 = self.model.inputs[1]
+            # x = self.model.layers[1].input
+            y = self.model.get_layer(name='match').output
+            #			y = self.model.layers[9].output
+            f = K.function([x1, x2, K.learning_phase()], y)
+            att_mtx = f([batch_data[0], batch_data[1], 0])
+            row, col = np.shape(att_mtx)
+            fo = open(self.output_att, 'wb')
+            for i in range(0, row):
+                for j in range(0, col):
+                    fo.write("%e " % att_mtx[i][j])
+                fo.write('\n')
+            fo.close()
+            sys.stderr.write("Output the attention weights in the file %s.\n" % self.output_att)
+            exit()
+        if "predict_classes" in dir(self.model):
+            prediction = self.model.predict_classes(batch_data)
+            probability = self.model.predict_proba(batch_data)
+        else:
+            probability = self.model.predict(batch_data)
+            prediction = np.argmax(probability, axis=2)
+
+        # output prediction and probability results
+        fo = open(target_file + "." + data_type, "wb")
+        for i, sent in enumerate(prediction):
+            for j, tid in enumerate(sent):
+                if pad_data[i][j] != 0:
+                    if self.tag_format == 'normal':
+                        fo.write(tagDict[tid] + ' ')
+                    elif self.tag_format == 'conlleval':
+                        fo.write(tagDict[tid] + '\n')
+            fo.write('\n')
+        fo.close()
+        fo = open(target_file + "." + data_type + '.prob', "wb")
+        for i, sent in enumerate(probability):
+            for j, prob in enumerate(sent):
+                if pad_data[i][j] != 0:
+                    for k, val in enumerate(prob):
+                        fo.write("%e " % val)
+                    fo.write("\n")
+        fo.close()

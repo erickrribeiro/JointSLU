@@ -7,12 +7,6 @@ NUM_RECORD=10
 if [ ! $1 ]; then
 	echo "Usage: $0 <model (rnn | irnn | gru | igru | lstm | ilstm | imemn2n-tied | memn2n-tied)> <backend (theano | tensorflow; optional)> <GPU id; optional>"
 else
-	if [ ! $2 ]; then
-		echo "Default is CPU for theano or automatic setting for tensorflow depending on what the backend is using."
-		GPUSET=''
-	elif [ $2 == 'theano' ]; then
-		GPUSET="THEANO_FLAGS=device=gpu$3,floatX=float32"
-	fi
 	MDL=$1
 	TRAIN=$DATADIR/atis-2.train.iob
 	DEV=$DATADIR/atis-2.dev.iob
@@ -31,7 +25,7 @@ else
 			fi
 			RES_PATH=experiment/res/"$HDIM"-"$DROPOUT"
 			MDL_PATH=experiment/mdl/"$HDIM"-"$DROPOUT"
-			CMD="$GPUSET python2.7 $PROG --train $TRAIN --dev $DEV --test $TEST --sgdtype $OPTFUNC --arch $MDL --iter_per_epoch $ITER_EPOCH --out $RES_PATH -m $MAX_ITER --mdl_path $MDL_PATH --record_epoch $NUM_RECORD --dropout True --dropout_ratio $DROPOUT --hidden_size $HDIM --time_length $TLEN --embedding_size $VDIM --input_type embedding"
+			CMD="python2.7 $PROG --train $TRAIN --dev $DEV --test $TEST --sgdtype $OPTFUNC --arch $MDL --iter_per_epoch $ITER_EPOCH --out $RES_PATH -m $MAX_ITER --mdl_path $MDL_PATH --record_epoch $NUM_RECORD --dropout True --dropout_ratio $DROPOUT --hidden_size $HDIM --time_length $TLEN --embedding_size $VDIM --input_type embedding"
 			echo $CMD
 		done
 	done
