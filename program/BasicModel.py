@@ -127,9 +127,15 @@ class KerasModel(object):
             else:
                 current = raw_current = Input(shape=(self.time_length, self.input_vocab_size))
             if 'rnn' in self.arch:
-                forward = SimpleRNN(self.hidden_size, return_sequences=True, init=self.init_type,
+                forward = SimpleRNN(self.hidden_size,
+                                    return_sequences=True,
+                                    kernel_initializer=self.init_type,
                                     activation=self.activation)(current)
-                backward = SimpleRNN(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation, go_backwards=True)(current)
+                backward = SimpleRNN(self.hidden_size,
+                                     return_sequences=True,
+                                     kernel_initializer=self.init_type,
+                                     activation=self.activation,
+                                     go_backwards=True)(current)
             elif 'gru' in self.arch:
                 forward = GRU(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation)(current)
                 backward = GRU(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation, go_backwards=True)(current)
@@ -145,7 +151,7 @@ class KerasModel(object):
                 tagger = Dropout(self.dropout_ratio)(tagger)
             prediction = TimeDistributed(Dense(self.output_vocab_size, activation='softmax'))(tagger)
 
-            self.model = Model(input=raw_current, output=prediction)
+            self.model = Model(inputs=raw_current, outputs=prediction)
             self.model.compile(loss='categorical_crossentropy', optimizer=opt_func)
 
         # 2-Stacked Layered RNN (LSTM, SimpleRNN, GRU)
@@ -564,7 +570,7 @@ class KerasModel(object):
                             self.model.train_on_batch(single_batch_train, y_train[cur:cur+num+1])
                         cur += num + 1
                 else:
-                    self.model.fit(batch_train, y_train, batch_size=self.batch_size, nb_epoch=self.max_epochs, verbose=1, shuffle=self.shuffle)
+                    self.model.fit(batch_train, y_train, batch_size=self.batch_size, epochs=self.max_epochs, verbose=1, shuffle=self.shuffle)
 
     def run(self):
         # initialization of vocab
