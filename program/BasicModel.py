@@ -30,10 +30,13 @@ class KerasModel(object):
         self.hidden_size = argparams['hidden_size'] # size of hidden layer of neurons
         self.learning_rate = argparams['learning_rate']
         self.training_file = argparams['train_data_path']
+        print ('training_file: ', self.training_file)
         self.validation_file = argparams['dev_data_path']
         self.test_file = argparams['test_data_path']
         self.result_path = argparams['result_path']
+        print('result_path: ', self.result_path)
         self.train_numfile = argparams['train_numfile']
+        print('train_numfile: ', self.train_numfile)
         self.dev_numfile = argparams['dev_numfile']
         self.test_numfile = argparams['test_numfile']
         self.update_f = argparams['sgdtype'] # options: adagrad, rmsprop, vanilla. default: vanilla
@@ -50,6 +53,7 @@ class KerasModel(object):
         self.dropout = argparams['dropout']
         self.dropout_ratio = argparams['dropout_ratio']
         self.iter_per_epoch = argparams['iter_per_epoch']
+        print('iter_per_epoch: ', self.iter_per_epoch)
         self.arch = argparams['arch']
         self.init_type = argparams['init_type']
         self.fancy_forget_bias_init = argparams['forget_bias']
@@ -80,12 +84,15 @@ class KerasModel(object):
             self.model_arch = 'e2e-' + self.model_arch
 
     def build(self):
+        print('Construindo a rede neural..')
 
         # decide main model
         if self.input_type == '1hot':
             self.embedding_size = self.input_vocab_size
 
         # set optimizer
+        print ('optimizer:', self.update_f)
+        print ('is_default: ', self.default)
         opt_func = self.update_f
         if not self.default:
             if self.update_f == 'sgd':
@@ -119,6 +126,7 @@ class KerasModel(object):
 
         # Vallina RNN (LSTM, SimpleRNN, GRU)
         # Bidirectional-RNN (LSTM, SimpleRNN, GRU)
+        print('arch: ', self.arch)
         if self.arch == 'lstm' or self.arch == 'rnn' or self.arch == 'gru' or self.arch == 'blstm' or self.arch == 'brnn' or self.arch == 'bgru':
             if self.input_type == 'embedding':
                 raw_current = Input(shape=(self.time_length,), dtype='int32')
@@ -137,11 +145,11 @@ class KerasModel(object):
                                      activation=self.activation,
                                      go_backwards=True)(current)
             elif 'gru' in self.arch:
-                forward = GRU(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation)(current)
-                backward = GRU(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation, go_backwards=True)(current)
+                forward = GRU(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation)(current)
+                backward = GRU(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation, go_backwards=True)(current)
             elif 'lstm' in self.arch:
-                forward = LSTM(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation)(current)
-                backward = LSTM(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation, go_backwards=True)(current)
+                forward = LSTM(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation)(current)
+                backward = LSTM(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation, go_backwards=True)(current)
             if 'b' in self.arch:
                 tagger = concatenate([forward, backward])
 
@@ -160,14 +168,14 @@ class KerasModel(object):
             if self.input_type == 'embedding':
                 self.model.add(Embedding(self.input_vocab_size, self.embedding_size, input_length=self.time_length))
             if self.arch == '2lstm':
-                basic_model = LSTM(self.hidden_size, return_sequences=True, input_shape=(self.time_length, self.embedding_size), init=self.init_type, activation=self.activation)
-                stack_model = LSTM(self.hidden_size, return_sequences=True, input_shape=(self.time_length, self.hidden_size), init=self.init_type, activation=self.activation)
+                basic_model = LSTM(self.hidden_size, return_sequences=True, input_shape=(self.time_length, self.embedding_size), kernel_initializer=self.init_type, activation=self.activation)
+                stack_model = LSTM(self.hidden_size, return_sequences=True, input_shape=(self.time_length, self.hidden_size), kernel_initializer=self.init_type, activation=self.activation)
             elif self.arch == '2rnn':
-                basic_model = SimpleRNN(self.hidden_size, return_sequences=True, input_shape=(self.time_length, self.embedding_size), init=self.init_type, activation=self.activation)
-                stack_model = SimpleRNN(self.hidden_size, return_sequences=True, input_shape=(self.time_length, self.hidden_size), init=self.init_type, activation=self.activation)
+                basic_model = SimpleRNN(self.hidden_size, return_sequences=True, input_shape=(self.time_length, self.embedding_size), kernel_initializer=self.init_type, activation=self.activation)
+                stack_model = SimpleRNN(self.hidden_size, return_sequences=True, input_shape=(self.time_length, self.hidden_size), kernel_initializer=self.init_type, activation=self.activation)
             else:
-                basic_model = GRU(self.hidden_size, return_sequences=True, input_shape=(self.time_length, self.embedding_size), init=self.init_type, activation=self.activation)
-                stack_model = GRU(self.hidden_size, return_sequences=True, input_shape=(self.time_length, self.hidden_size), init=self.init_type, activation=self.activation)
+                basic_model = GRU(self.hidden_size, return_sequences=True, input_shape=(self.time_length, self.embedding_size), kernel_initializer=self.init_type, activation=self.activation)
+                stack_model = GRU(self.hidden_size, return_sequences=True, input_shape=(self.time_length, self.hidden_size), kernel_initializer=self.init_type, activation=self.activation)
             self.model.add(basic_model)
             if self.dropout:
                 self.model.add(Dropout(self.dropout_ratio))
@@ -186,20 +194,20 @@ class KerasModel(object):
             else:
                 current = raw_current = Input(shape=(self.time_length, self.input_vocab_size))
             if 'rnn' in self.arch:
-                fencoder = SimpleRNN(self.hidden_size, return_sequences=False, init=self.init_type, activation=self.activation)(current)
-                bencoder = SimpleRNN(self.hidden_size, return_sequences=False, init=self.init_type, activation=self.activation, go_backwards=True)(current)
-                flabeling = SimpleRNN(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation)(current)
-                blabeling = SimpleRNN(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation, go_backwards=True)(current)
+                fencoder = SimpleRNN(self.hidden_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation)(current)
+                bencoder = SimpleRNN(self.hidden_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation, go_backwards=True)(current)
+                flabeling = SimpleRNN(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation)(current)
+                blabeling = SimpleRNN(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation, go_backwards=True)(current)
             elif 'gru' in self.arch:
-                fencoder = GRU(self.hidden_size, return_sequences=False, init=self.init_type, activation=self.activation)(current)
-                bencoder = GRU(self.hidden_size, return_sequences=False, init=self.init_type, activation=self.activation, go_backwards=True)(current)
-                flabeling = GRU(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation)(current)
-                blabeling = GRU(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation, go_backwards=True)(current)
+                fencoder = GRU(self.hidden_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation)(current)
+                bencoder = GRU(self.hidden_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation, go_backwards=True)(current)
+                flabeling = GRU(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation)(current)
+                blabeling = GRU(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation, go_backwards=True)(current)
             elif 'lstm' in self.arch:
-                fencoder = LSTM(self.hidden_size, return_sequences=False, init=self.init_type, activation=self.activation)(current)
-                bencoder = LSTM(self.hidden_size, return_sequences=False, init=self.init_type, activation=self.activation, go_backwards=True)(current)
-                flabeling = LSTM(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation)(current)
-                blabeling = LSTM(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation, go_backwards=True)(current)
+                fencoder = LSTM(self.hidden_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation)(current)
+                bencoder = LSTM(self.hidden_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation, go_backwards=True)(current)
+                flabeling = LSTM(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation)(current)
+                blabeling = LSTM(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation, go_backwards=True)(current)
             if 'b' in self.arch:
                 encoder = concatenate([fencoder, bencoder], mode='concat', concat_axis=-1)
                 labeling = concatenate([flabeling, blabeling], mode='concat', concat_axis=-1)
@@ -227,14 +235,14 @@ class KerasModel(object):
             encoder = MaxPooling1D(self.time_length)(encoder)
             encoder = Flatten()(encoder)
             if 'rnn' in self.arch:
-                forward = SimpleRNN(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation)(current)
-                backward = SimpleRNN(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation, go_backwards=True)(current)
+                forward = SimpleRNN(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation)(current)
+                backward = SimpleRNN(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation, go_backwards=True)(current)
             elif 'gru' in self.arch:
-                forward = GRU(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation)(current)
-                backward = GRU(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation, go_backwards=True)(current)
+                forward = GRU(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation)(current)
+                backward = GRU(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation, go_backwards=True)(current)
             elif 'lstm' in self.arch:
-                forward = LSTM(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation)(current)
-                backward = LSTM(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation, go_backwards=True)(current)
+                forward = LSTM(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation)(current)
+                backward = LSTM(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation, go_backwards=True)(current)
             if 'b' in self.arch:
                 labeling = concatenate([forward, backward], mode='concat', concat_axis=-1)
             else:
@@ -261,20 +269,20 @@ class KerasModel(object):
                 his_vec = raw_his = Input(shape=(self.time_length * self.his_length, self.input_vocab_size))
                 cur_vec = raw_cur = Input(shape=(self.time_length, self.input_vocab_size))
             if 'rnn' in self.arch:
-                fencoder = SimpleRNN(self.hidden_size, return_sequences=False, init=self.init_type, activation=self.activation)(his_vec)
-                bencoder = SimpleRNN(self.hidden_size, return_sequences=False, init=self.init_type, activation=self.activation, go_backwards=True)(his_vec)
-                flabeling = SimpleRNN(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation)(cur_vec)
-                blabeling = SimpleRNN(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation, go_backwards=True)(cur_vec)
+                fencoder = SimpleRNN(self.hidden_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation)(his_vec)
+                bencoder = SimpleRNN(self.hidden_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation, go_backwards=True)(his_vec)
+                flabeling = SimpleRNN(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation)(cur_vec)
+                blabeling = SimpleRNN(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation, go_backwards=True)(cur_vec)
             elif 'gru' in self.arch:
-                fencoder = GRU(self.hidden_size, return_sequences=False, init=self.init_type, activation=self.activation)(his_vec)
-                bencoder = GRU(self.hidden_size, return_sequences=False, init=self.init_type, activation=self.activation, go_backwards=True)(his_vec)
-                flabeling = GRU(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation)(cur_vec)
-                blabeling = GRU(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation, go_backwards=True)(cur_vec)
+                fencoder = GRU(self.hidden_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation)(his_vec)
+                bencoder = GRU(self.hidden_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation, go_backwards=True)(his_vec)
+                flabeling = GRU(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation)(cur_vec)
+                blabeling = GRU(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation, go_backwards=True)(cur_vec)
             elif 'lstm' in self.arch:
-                fencoder = LSTM(self.hidden_size, return_sequences=False, init=self.init_type, activation=self.activation)(his_vec)
-                bencoder = LSTM(self.hidden_size, return_sequences=False, init=self.init_type, activation=self.activation, go_backwards=True)(his_vec)
-                flabeling = LSTM(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation)(cur_vec)
-                blabeling = LSTM(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation, go_backwards=True)(cur_vec)
+                fencoder = LSTM(self.hidden_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation)(his_vec)
+                bencoder = LSTM(self.hidden_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation, go_backwards=True)(his_vec)
+                flabeling = LSTM(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation)(cur_vec)
+                blabeling = LSTM(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation, go_backwards=True)(cur_vec)
             if 'b' in self.arch:
                 encoder = concatenate([fencoder, bencoder], mode='concat', concat_axis=-1)
                 labeling = concatenate([flabeling, blabeling], mode='concat', concat_axis=-1)
@@ -302,14 +310,14 @@ class KerasModel(object):
                 his_vec = raw_his = Input(shape=(self.time_length * self.his_length, self.input_vocab_size))
                 cur_vec = raw_cur = Input(shape=(self.time_length, self.input_vocab_size))
             if 'rnn' in self.arch:
-                flabeling = SimpleRNN(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation)(cur_vec)
-                blabeling = SimpleRNN(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation, go_backwards=True)(cur_vec)
+                flabeling = SimpleRNN(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation)(cur_vec)
+                blabeling = SimpleRNN(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation, go_backwards=True)(cur_vec)
             elif 'gru' in self.arch:
-                flabeling = GRU(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation)(cur_vec)
-                blabeling = GRU(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation, go_backwards=True)(cur_vec)
+                flabeling = GRU(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation)(cur_vec)
+                blabeling = GRU(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation, go_backwards=True)(cur_vec)
             elif 'lstm' in self.arch:
-                flabeling = LSTM(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation)(cur_vec)
-                blabeling = LSTM(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation, go_backwards=True)(cur_vec)
+                flabeling = LSTM(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation)(cur_vec)
+                blabeling = LSTM(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation, go_backwards=True)(cur_vec)
             if 'b' in self.arch:
                 labeling = concatenate([flabeling, blabeling], mode='concat', concat_axis=-1)
             else:
@@ -344,24 +352,24 @@ class KerasModel(object):
                 cur_vec = Flatten()(cur_vec)
             elif 'memn2n-r-' in self.arch:
                 if 'blstm' in self.arch:
-                    fcur_vec = LSTM(self.sembedding_size, return_sequences=False, init=self.init_type, activation=self.activation)(current)
-                    bcur_vec = LSTM(self.sembedding_size, return_sequences=False, init=self.init_type, activation=self.activation, go_backwards=True)(current)
+                    fcur_vec = LSTM(self.sembedding_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation)(current)
+                    bcur_vec = LSTM(self.sembedding_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation, go_backwards=True)(current)
                     cur_vec = concatenate([fcur_vec, bcur_vec], mode='concat')
                 elif 'rnn' in self.arch:
-                    cur_vec = SimpleRNN(self.sembedding_size, return_sequences=False, init=self.init_type, activation=self.activation)(current)
+                    cur_vec = SimpleRNN(self.sembedding_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation)(current)
                 elif 'gru' in self.arch:
-                    cur_vec = GRU(self.sembedding_size, return_sequences=False, init=self.init_type, activation=self.activation)(current)
+                    cur_vec = GRU(self.sembedding_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation)(current)
                 elif 'lstm' in self.arch:
-                    cur_vec = LSTM(self.sembedding_size, return_sequences=False, init=self.init_type, activation=self.activation)(current)
+                    cur_vec = LSTM(self.sembedding_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation)(current)
                 else:
                     sys.stderr.write("The RNN model is invaliad. (rnn | gru | lstm)\n")
             elif 'memn2n-rc-' in self.arch:
                 if 'rnn' in self.arch:
-                    cur_vec = SimpleRNN(self.sembedding_size, return_sequences=True, init=self.init_type, activation=self.activation)(current)
+                    cur_vec = SimpleRNN(self.sembedding_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation)(current)
                 elif 'gru' in self.arch:
-                    cur_vec = GRU(self.sembedding_size, return_sequences=True, init=self.init_type, activation=self.activation)(current)
+                    cur_vec = GRU(self.sembedding_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation)(current)
                 elif 'lstm' in self.arch:
-                    cur_vec = LSTM(self.sembedding_size, return_sequences=True, init=self.init_type, activation=self.activation)(current)
+                    cur_vec = LSTM(self.sembedding_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation)(current)
                 else:
                     sys.stderr.write("The RNN model is invaliad. (rnn | gru | lstm)\n")
                 cur_vec = Convolution1D(self.sembedding_size, 3, border_mode='same', input_shape=(self.time_length, self.sembedding_size))(cur_vec)
@@ -370,21 +378,21 @@ class KerasModel(object):
             elif 'memn2n-cr-' in self.arch:
                 cur_vec = Convolution1D(self.sembedding_size, 3, border_mode='same', input_shape=(self.time_length, self.embedding_size))(current)
                 if 'rnn' in self.arch:
-                    cur_vec = SimpleRNN(self.sembedding_size, return_sequences=False, init=self.init_type, activation=self.activation)(cur_vec)
+                    cur_vec = SimpleRNN(self.sembedding_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation)(cur_vec)
                 elif 'gru' in self.arch:
-                    cur_vec = GRU(self.sembedding_size, return_sequences=False, init=self.init_type, activation=self.activation)(cur_vec)
+                    cur_vec = GRU(self.sembedding_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation)(cur_vec)
                 elif 'lstm' in self.arch:
-                    cur_vec = LSTM(self.sembedding_size, return_sequences=False, init=self.init_type, activation=self.activation)(cur_vec)
+                    cur_vec = LSTM(self.sembedding_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation)(cur_vec)
                 else:
                     sys.stderr.write("The RNN model is invaliad. (rnn | gru | lstm)\n")
             elif 'memn2n-crp-' in self.arch:
                 cur_vec = Convolution1D(self.sembedding_size, 3, border_mode='same', input_shape=(self.time_length, self.embedding_size))(current)
                 if 'rnn' in self.arch:
-                    cur_vec = SimpleRNN(self.sembedding_size, return_sequences=False, init=self.init_type, activation=self.activation)(cur_vec)
+                    cur_vec = SimpleRNN(self.sembedding_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation)(cur_vec)
                 elif 'gru' in self.arch:
-                    cur_vec = GRU(self.sembedding_size, return_sequences=False, init=self.init_type, activation=self.activation)(cur_vec)
+                    cur_vec = GRU(self.sembedding_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation)(cur_vec)
                 elif 'lstm' in self.arch:
-                    cur_vec = LSTM(self.sembedding_size, return_sequences=False, init=self.init_type, activation=self.activation)(cur_vec)
+                    cur_vec = LSTM(self.sembedding_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation)(cur_vec)
                 else:
                     sys.stderr.write("The RNN model is invaliad. (rnn | gru | lstm)\n")
                 cur_vec = MaxPooling1D(self.time_length)(cur_vec)
@@ -413,15 +421,15 @@ class KerasModel(object):
 
             # tagging the words in the current sentence
             if 'blstm' in self.arch:
-                forward = LSTM(self.hidden_size, return_sequences=False, init=self.init_type, activation=self.activation)(current)
-                backward = LSTM(self.hidden_size, return_sequences=False, init=self.init_type, activation=self.activation, go_backwards=True)(current)
+                forward = LSTM(self.hidden_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation)(current)
+                backward = LSTM(self.hidden_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation, go_backwards=True)(current)
                 labeling = concatenate([forward, backward], mode='concat', concat_axis=-1)
             elif 'rnn' in self.arch:
-                labeling = SimpleRNN(self.hidden_size, return_sequences=False, init=self.init_type, activation=self.activation)(current)
+                labeling = SimpleRNN(self.hidden_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation)(current)
             elif 'gru' in self.arch:
-                labeling = GRU(self.hidden_size, return_sequences=False, init=self.init_type, activation=self.activation)(current)
+                labeling = GRU(self.hidden_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation)(current)
             elif 'lstm' in self.arch:
-                labeling = LSTM(self.hidden_size, return_sequences=False, init=self.init_type, activation=self.activation)(current)
+                labeling = LSTM(self.hidden_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation)(current)
             tagger = concatenate([encoder, labeling], mode='concat', concat_axis=-1)
             if self.dropout:
                 tagger = Dropout(self.dropout_ratio)(tagger)
@@ -447,24 +455,24 @@ class KerasModel(object):
                 cur_vec = Flatten()(cur_vec)
             elif 'memn2n-r-' in self.arch:
                 if 'blstm' in self.arch:
-                    fcur_vec = LSTM(self.sembedding_size, return_sequences=False, init=self.init_type, activation=self.activation)(current)
-                    bcur_vec = LSTM(self.sembedding_size, return_sequences=False, init=self.init_type, activation=self.activation, go_backwards=True)(current)
+                    fcur_vec = LSTM(self.sembedding_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation)(current)
+                    bcur_vec = LSTM(self.sembedding_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation, go_backwards=True)(current)
                     cur_vec = concatenate([fcur_vec, bcur_vec], mode='concat')
                 elif 'rnn' in self.arch:
-                    cur_vec = SimpleRNN(self.sembedding_size, return_sequences=False, init=self.init_type, activation=self.activation)(current)
+                    cur_vec = SimpleRNN(self.sembedding_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation)(current)
                 elif 'gru' in self.arch:
-                    cur_vec = GRU(self.sembedding_size, return_sequences=False, init=self.init_type, activation=self.activation)(current)
+                    cur_vec = GRU(self.sembedding_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation)(current)
                 elif 'lstm' in self.arch:
-                    cur_vec = LSTM(self.sembedding_size, return_sequences=False, init=self.init_type, activation=self.activation)(current)
+                    cur_vec = LSTM(self.sembedding_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation)(current)
                 else:
                     sys.stderr.write("The RNN model is invaliad. (rnn | gru | lstm)\n")
             elif 'memn2n-rc-' in self.arch:
                 if 'rnn' in self.arch:
-                    cur_vec = SimpleRNN(self.sembedding_size, return_sequences=True, init=self.init_type, activation=self.activation)(current)
+                    cur_vec = SimpleRNN(self.sembedding_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation)(current)
                 elif 'gru' in self.arch:
-                    cur_vec = GRU(self.sembedding_size, return_sequences=True, init=self.init_type, activation=self.activation)(current)
+                    cur_vec = GRU(self.sembedding_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation)(current)
                 elif 'lstm' in self.arch:
-                    cur_vec = LSTM(self.sembedding_size, return_sequences=True, init=self.init_type, activation=self.activation)(current)
+                    cur_vec = LSTM(self.sembedding_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation)(current)
                 else:
                     sys.stderr.write("The RNN model is invaliad. (rnn | gru | lstm)\n")
                 cur_vec = Convolution1D(self.sembedding_size, 3, border_mode='same', input_shape=(self.time_length, self.sembedding_size))(cur_vec)
@@ -473,21 +481,21 @@ class KerasModel(object):
             elif 'memn2n-cr-' in self.arch:
                 cur_vec = Convolution1D(self.sembedding_size, 3, border_mode='same', input_shape=(self.time_length, self.embedding_size))(current)
                 if 'rnn' in self.arch:
-                    cur_vec = SimpleRNN(self.sembedding_size, return_sequences=False, init=self.init_type, activation=self.activation)(cur_vec)
+                    cur_vec = SimpleRNN(self.sembedding_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation)(cur_vec)
                 elif 'gru' in self.arch:
-                    cur_vec = GRU(self.sembedding_size, return_sequences=False, init=self.init_type, activation=self.activation)(cur_vec)
+                    cur_vec = GRU(self.sembedding_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation)(cur_vec)
                 elif 'lstm' in self.arch:
-                    cur_vec = LSTM(self.sembedding_size, return_sequences=False, init=self.init_type, activation=self.activation)(cur_vec)
+                    cur_vec = LSTM(self.sembedding_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation)(cur_vec)
                 else:
                     sys.stderr.write("The RNN model is invaliad. (rnn | gru | lstm)\n")
             elif 'memn2n-crp-' in self.arch:
                 cur_vec = Convolution1D(self.sembedding_size, 3, border_mode='same', input_shape=(self.time_length, self.embedding_size))(current)
                 if 'rnn' in self.arch:
-                    cur_vec = SimpleRNN(self.sembedding_size, return_sequences=False, init=self.init_type, activation=self.activation)(cur_vec)
+                    cur_vec = SimpleRNN(self.sembedding_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation)(cur_vec)
                 elif 'gru' in self.arch:
-                    cur_vec = GRU(self.sembedding_size, return_sequences=False, init=self.init_type, activation=self.activation)(cur_vec)
+                    cur_vec = GRU(self.sembedding_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation)(cur_vec)
                 elif 'lstm' in self.arch:
-                    cur_vec = LSTM(self.sembedding_size, return_sequences=False, init=self.init_type, activation=self.activation)(cur_vec)
+                    cur_vec = LSTM(self.sembedding_size, return_sequences=False, kernel_initializer=self.init_type, activation=self.activation)(cur_vec)
                 else:
                     sys.stderr.write("The RNN model is invaliad. (rnn | gru | lstm)\n")
                 cur_vec = MaxPooling1D(self.time_length)(cur_vec)
@@ -517,15 +525,15 @@ class KerasModel(object):
 
             # tagging the words in the current sentence
             if 'blstm' in self.arch:
-                forward = LSTM(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation)(current)
-                backward = LSTM(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation, go_backwards=True)(current)
+                forward = LSTM(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation)(current)
+                backward = LSTM(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation, go_backwards=True)(current)
                 labeling = concatenate([forward, backward], mode='concat', concat_axis=-1)
             elif 'rnn' in self.arch:
-                labeling = SimpleRNN(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation)(current)
+                labeling = SimpleRNN(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation)(current)
             elif 'gru' in self.arch:
-                labeling = GRU(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation)(current)
+                labeling = GRU(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation)(current)
             elif 'lstm' in self.arch:
-                labeling = LSTM(self.hidden_size, return_sequences=True, init=self.init_type, activation=self.activation)(current)
+                labeling = LSTM(self.hidden_size, return_sequences=True, kernel_initializer=self.init_type, activation=self.activation)(current)
             tagger = concatenate([encoder, labeling], mode='concat', concat_axis=-1)
             if self.dropout:
                 tagger = Dropout(self.dropout_ratio)(tagger)
@@ -659,7 +667,9 @@ class KerasModel(object):
                 # save weights for the current model
                 whole_path = self.mdl_path + '/' + self.model_arch + '.' + str(num_iter) + '.h5'
                 sys.stderr.write("Writing model weight to %s...\n" %whole_path)
-                self.model.save_weights(whole_path, overwrite=True)
+                
+                # self.model.save_weights(whole_path, overwrite=True)
+                self.model.save(whole_path, overwrite=True);
         else:
             self.train(H_train=H_train, X_train=X_train, y_train=y_train, H_dev=H_dev, X_dev=X_dev, y_dev=y_dev)
             if not self.nodev:
@@ -668,7 +678,8 @@ class KerasModel(object):
             if self.load_weight is None:
                 whole_path = self.mdl_path + '/' + self.model_arch + '.final-' + str(self.max_epochs) + '.h5'
                 sys.stderr.write("Writing model weight to %s...\n" %whole_path)
-                self.model.save_weights(whole_path, overwrite=True)
+                # self.model.save_weights(whole_path, overwrite=True)
+                self.model.save(whole_path, overwrite=True);
 
     def test(self, H, X, data_type, tagDict, pad_data):
         # open a dir to store results
