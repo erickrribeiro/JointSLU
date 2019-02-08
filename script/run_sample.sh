@@ -11,7 +11,7 @@ else
 		echo "Default is CPU for theano or automatic setting for tensorflow depending on what the backend is using."
 		GPUSET=''
 	elif [ $2 == 'theano' ]; then
-		GPUSET="THEANO_FLAGS=device=gpu$3,floatX=float32"
+		GPUSET="THEANO_FLAGS=device=gpu:0,floatX=float32"
 	fi
 	MDL=$1
 	TRAIN=$DATADIR/sample.iob
